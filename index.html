@@ -1,461 +1,300 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sailing Start Line – Speed Helper</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <style>
-    html, body { height: 100%; margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
-    #app { display: grid; grid-template-rows: auto 1fr auto; height: 100%; }
-    header { padding: 10px 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); position: sticky; top: 0; z-index: 1000; background: #fff; }
-    header h1 { margin: 0; font-size: 18px; }
-    header small { color: #666; }
-    #map { height: 100%; }
-    .controls { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 10px 12px; background: #fff; border-top: 1px solid #eee; }
-    .controls > * { font-size: 14px; padding: 10px; border-radius: 10px; border: 1px solid #e5e7eb; }
-    button { cursor: pointer; background: #0ea5e9; color: white; border: none; }
-    button.secondary { background: #64748b; }
-    button.ghost { background: white; color: #0f172a; border: 1px solid #e5e7eb; }
-    .row { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(12, 1fr); gap: 8px; align-items: center; }
-    .row > * { grid-column: span 12; }
-    @media (min-width: 800px){ .row > * { grid-column: span 4; } }
-    .pill { display:inline-block; padding:6px 10px; border-radius:999px; font-weight:600; }
-    .ok { background:#ecfeff; color:#0e7490; }
-    .warn { background:#fff7ed; color:#9a3412; }
-    .bad { background:#fef2f2; color:#991b1b; }
-    .good { background:#ecfdf5; color:#065f46; }
-    .stat { padding: 10px; border: 1px dashed #e5e7eb; border-radius: 12px; background: #fafafa; }
-    .stat h3 { margin: 0 0 6px; font-size: 13px; color:#475569; font-weight:600; }
-    .stat .value { font-size: 20px; font-weight: 700; }
-    label.inline { display:flex; gap:8px; align-items:center; }
-    input[type="number"] { width: 7em; }
-    .muted { color:#64748b; font-size: 12px; }
-    .banner { grid-column: 1 / -1; padding: 10px; border-radius: 10px; background:#fff7ed; color:#9a3412; border:1px solid #fed7aa; }
-    .banner.good { background:#ecfdf5; color:#065f46; border-color:#bbf7d0; }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Sailing Start Line – Speed Helper</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  :root{
+    --bg:#0b1020; --panel:#111629; --panel-2:#0e1430; --text:#e5ecff; --muted:#9fb0d0;
+    --accent:#4cc9f0; --good:#10b981; --warn:#f59e0b; --bad:#ef4444; --line:#22c55e;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+  #app{height:100%;display:grid;grid-template-rows:auto 1fr auto}
+  header{position:sticky;top:0;z-index:20;background:linear-gradient(180deg,var(--panel),rgba(17,22,41,.92));padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.06);backdrop-filter:blur(6px)}
+  header h1{margin:0;font-size:18px}
+  header small{color:var(--muted)}
+  #map{height:100%}
+  .controls{background:linear-gradient(0deg,var(--panel),rgba(17,22,41,.96));border-top:1px solid rgba(255,255,255,.08);padding:10px;display:grid;gap:10px;z-index:30}
+  .group{display:flex;gap:8px;overflow:auto;padding-bottom:2px} .group::-webkit-scrollbar{display:none}
+  .row{display:grid;gap:8px} @media(min-width:480px){.row.cols-3{grid-template-columns:repeat(3,1fr)}}
+  .btn{appearance:none;border:1px solid rgba(255,255,255,.12);background:var(--panel-2);color:var(--text);
+       padding:12px 14px;border-radius:14px;font-weight:650;font-size:15px;min-height:48px;display:flex;align-items:center;justify-content:center;gap:8px}
+  .btn:active{transform:translateY(1px)} .btn.primary{background:linear-gradient(180deg,#2a73ff,#1e61e9)}
+  .btn.ghost{background:transparent} .btn.good{background:rgba(16,185,129,.15)} .btn.warn{background:rgba(245,158,11,.15)} .btn.bad{background:rgba(239,68,68,.15)}
+  label.inline{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:14px}
+  input,select{background:#0b1130;color:var(--text);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:10px 12px;font-size:15px;min-height:44px}
+  .pill{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:8px 12px;font-weight:700}
+  .pill.ok{background:rgba(76,201,240,.18);color:#a3e8ff} .pill.good{background:rgba(16,185,129,.18);color:#86f8cf}
+  .pill.warn{background:rgba(245,158,11,.18);color:#ffd699} .pill.bad{background:rgba(239,68,68,.18);color:#ffb4b4}
+  .stat{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:10px}
+  .stat h3{margin:0 0 6px;font-size:12px;color:var(--muted)} .stat .value{font-size:20px;font-weight:800}
+  .banner{display:none;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.4);color:#ffd699;padding:10px;border-radius:12px}
+  .banner.good{background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.4);color:#a7f3d0}
+  .leaflet-container{background:#0a0f1e}
+
+  /* Race mode overlay */
+  .race{position:fixed;inset:0;z-index:50;display:none;background:radial-gradient(1000px 600px at 50% 10%,#0e1530,#070b18)}
+  .race.on{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;gap:18px}
+  .race .big{font-size:18vw;line-height:.9;font-weight:900;letter-spacing:1px}
+  .race .delta{font-size:10vw;font-weight:900}
+  .race .row{display:flex;gap:12px}
+  .race .chip{padding:10px 14px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);font-weight:700}
+  .race .delta.good{color:#86f8cf} .race .delta.bad{color:#ffb4b4} .race .delta.ok{color:#a3e8ff}
+  .race .close{position:absolute;top:12px;right:12px}
+</style>
 </head>
 <body>
-  <div id="app">
-    <header>
-      <h1>Sailing Start Line — Speed Helper</h1>
-      <small>Set the start line, pick your start time, choose the target end, and it tells you how fast to go to hit the line at zero.</small>
-    </header>
+<div id="app">
+  <header>
+    <h1>⛵️ Start Line — Speed Helper</h1>
+    <small>Set A/B, choose target + offset, hit zero on time.</small>
+  </header>
 
-    <div id="map"></div>
+  <div id="map"></div>
 
-    <div class="controls">
-      <div id="secureBanner" class="banner" style="display:none"></div>
+  <div class="controls">
+    <div id="secureBanner" class="banner"></div>
 
-      <div class="row">
-        <button id="dropA">Set Pin A</button>
-        <button id="dropB">Set Pin B</button>
-        <button id="aFromGPS" class="secondary">A from GPS</button>
-        <button id="bFromGPS" class="secondary">B from GPS</button>
-        <button id="clear" class="ghost">Clear</button>
-        <button id="enableGPS" class="secondary">Enable GPS</button>
-      </div>
-
-      <div class="row">
-        <label class="inline">
-          Start time (local):
-          <input id="startTime" type="datetime-local" />
-        </label>
-
-        <label class="inline">
-          Target end:
-          <select id="targetEnd">
-            <option value="A">A (e.g., committee boat)</option>
-            <option value="B">B (pin)</option>
-          </select>
-        </label>
-
-        <label class="inline" title="How far from the chosen end, along the line, to cross">
-          Offset on line (m):
-          <input id="offsetMeters" type="number" min="0" step="1" value="5" />
-        </label>
-      </div>
-
-      <div class="row">
-        <div class="stat">
-          <h3>Countdown</h3>
-          <div id="countdown" class="value">—</div>
-        </div>
-        <div class="stat">
-          <h3>Status</h3>
-          <div id="statusText" class="value">Waiting for GPS…</div>
-        </div>
-        <div class="stat">
-          <h3>Target distance</h3>
-          <div id="distToTarget" class="value">—</div>
-          <div class="muted" id="targetLabel">—</div>
-        </div>
-      </div>
-
-      <div class="row">
-        <div class="stat">
-          <h3>Required speed</h3>
-          <div id="reqSpeed" class="value">—</div>
-        </div>
-        <div class="stat">
-          <h3>Current speed (SOG)</h3>
-          <div id="curSpeed" class="value">—</div>
-        </div>
-        <div class="stat">
-          <h3>ETA @ current</h3>
-          <div id="etaText" class="value">—</div>
-        </div>
-      </div>
-
-      <div class="row">
-        <div id="advice" class="pill warn">Set line + start time</div>
-      </div>
+    <div class="group">
+      <button id="enableGPS" class="btn primary">📍 Enable GPS</button>
+      <button id="aFromGPS" class="btn">A from GPS</button>
+      <button id="bFromGPS" class="btn">B from GPS</button>
+      <button id="dropA" class="btn">Tap-set A</button>
+      <button id="dropB" class="btn">Tap-set B</button>
+      <button id="clear" class="btn ghost">Clear</button>
+      <button id="raceToggle" class="btn good">🏁 Race mode</button>
     </div>
+
+    <div class="row cols-3">
+      <label class="inline">Start time
+        <input id="startTime" type="datetime-local" />
+      </label>
+      <label class="inline">Target end
+        <select id="targetEnd">
+          <option value="A">A (committee)</option>
+          <option value="B">B (pin)</option>
+        </select>
+      </label>
+      <label class="inline" title="How far down the line from the chosen end to cross">
+        Offset (m)
+        <input id="offsetMeters" type="number" min="0" step="1" value="5" />
+      </label>
+    </div>
+
+    <div class="row cols-3">
+      <div class="stat"><h3>Countdown</h3><div id="countdown" class="value">—</div></div>
+      <div class="stat"><h3>Status</h3><div id="statusText" class="value">Waiting for GPS…</div></div>
+      <div class="stat"><h3>Target distance</h3><div id="distToTarget" class="value">—</div></div>
+    </div>
+
+    <div class="row cols-3">
+      <div class="stat"><h3>Required speed</h3><div id="reqSpeed" class="value">—</div></div>
+      <div class="stat"><h3>Current SOG</h3><div id="curSpeed" class="value">—</div></div>
+      <div class="stat"><h3>ETA @ current</h3><div id="etaText" class="value">—</div></div>
+    </div>
+
+    <div class="row"><div id="advice" class="pill warn">Set line + start time</div></div>
   </div>
+</div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/@turf/turf@7.2.0/turf.min.js"></script>
+<!-- Race mode overlay -->
+<div id="race" class="race" aria-hidden="true">
+  <button class="btn ghost close" id="raceClose">✕</button>
+  <div id="raceCountdown" class="big">--:--</div>
+  <div id="raceDelta" class="delta ok">±0.0 kn</div>
+  <div class="row">
+    <div class="chip">Req: <span id="raceReq">—</span> kn</div>
+    <div class="chip">SOG: <span id="raceSOG">—</span> kn</div>
+    <div class="chip">Dist: <span id="raceDist">—</span> nm</div>
+  </div>
+  <div class="row">
+    <button id="raceTapSlower" class="btn bad">– Nudge</button>
+    <button id="raceTapFaster" class="btn good">+ Nudge</button>
+  </div>
+</div>
 
-  <!-- Module scope avoids global name collisions (e.g., with element IDs like 'dropB') -->
-  <script type="module">
-    const map = L.map('map');
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
-    map.setView([56.0, 10.0], 9);
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/@turf/turf@7.2.0/turf.min.js"></script>
+<script type="module">
+  // Map
+  const map = L.map('map',{zoomControl:false});
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+  map.setView([56.0,10.0],9);
+  L.control.zoom({position:'topright'}).addTo(map);
 
-    let markerA = null, markerB = null, startLine = null, closestPtMarker = null, targetMarker = null;
-    const track = L.polyline([], { color: '#2563eb', weight: 3, opacity: 0.7 }).addTo(map);
+  // State
+  let markerA=null, markerB=null, startLine=null, targetMarker=null;
+  const track = L.polyline([], { color:'#2a73ff', weight:3, opacity:.8 }).addTo(map);
+  let lastFix=null, watchId=null;
 
-    // Buttons (avoid const names that shadow window.* from ids)
-    const btnSetA   = document.getElementById('dropA');
-    const btnSetB   = document.getElementById('dropB');
-    const btnClear  = document.getElementById('clear');
-    const btnEnable = document.getElementById('enableGPS');
-    const btnAFromGPS = document.getElementById('aFromGPS');
-    const btnBFromGPS = document.getElementById('bFromGPS');
+  // Els
+  const $ = id => document.getElementById(id);
+  const btnEnable=$('enableGPS'), btnAFrom=$('aFromGPS'), btnBFrom=$('bFromGPS'),
+        btnDropA=$('dropA'), btnDropB=$('dropB'), btnClear=$('clear'),
+        startTimeInput=$('startTime'), targetEndSel=$('targetEnd'), offsetMetersInput=$('offsetMeters'),
+        secureBanner=$('secureBanner'), countdownEl=$('countdown'), statusText=$('statusText'),
+        distTargetEl=$('distToTarget'), reqEl=$('reqSpeed'), curEl=$('curSpeed'), etaEl=$('etaText'),
+        adviceEl=$('advice'), race=$('race'), raceToggle=$('raceToggle'), raceClose=$('raceClose'),
+        raceCountdown=$('raceCountdown'), raceDelta=$('raceDelta'), raceReq=$('raceReq'),
+        raceSOG=$('raceSOG'), raceDist=$('raceDist'), raceTapSlower=$('raceTapSlower'), raceTapFaster=$('raceTapFaster');
 
-    const startTimeInput = document.getElementById('startTime');
-    const countdownEl = document.getElementById('countdown');
-    const statusText = document.getElementById('statusText');
-    const distTargetEl = document.getElementById('distToTarget');
-    const targetLabelEl = document.getElementById('targetLabel');
-    const reqEl = document.getElementById('reqSpeed');
-    const curEl = document.getElementById('curSpeed');
-    const etaEl = document.getElementById('etaText');
-    const adviceEl = document.getElementById('advice');
-    const targetEndSel = document.getElementById('targetEnd');
-    const offsetMetersInput = document.getElementById('offsetMeters');
-    const secureBanner = document.getElementById('secureBanner');
+  // Utils
+  const fmt=(n,d=1)=>Number.isFinite(n)?n.toFixed(d):'—';
+  const mToNm=m=>m/1852, mpsToKn=s=>s*1.943844, kmToM=km=>km*1000;
+  function showSecureBanner(){
+    if (!window.isSecureContext){
+      secureBanner.style.display='block';
+      secureBanner.classList.remove('good');
+      secureBanner.innerHTML='⚠️ Location is blocked for file:// pages. Use HTTPS (GitHub Pages) or localhost, then tap <b>Enable GPS</b>.';
+    } else { secureBanner.style.display='block'; secureBanner.classList.add('good');
+      secureBanner.textContent='🔒 Secure context — geolocation allowed.'; }
+  } showSecureBanner();
 
-    function fmt(num, digits=2){ return Number.isFinite(num) ? num.toFixed(digits) : '—'; }
-    const metersToNm = (m) => m / 1852;
-    const mpsToKn = (mps) => mps * 1.943844;
-    const kmToM = (km) => km * 1000;
-
-    function showSecureBanner(){
-      if (!window.isSecureContext) {
-        secureBanner.style.display = 'block';
-        secureBanner.classList.remove('good');
-        secureBanner.innerHTML = '<strong>Geolocation may be blocked</strong>. This page is not in a secure context. On Android Chrome, location only works over HTTPS or localhost. <br/>Suggestion: host this file on a HTTPS site (GitHub Pages/Netlify) or use a local server. After moving, tap <em>Enable GPS</em> again.';
+  function updateStartLine(){
+    if (markerA && markerB){
+      const pts=[markerA.getLatLng(), markerB.getLatLng()];
+      if (!startLine) startLine=L.polyline(pts,{color:'#22c55e',weight:4}).addTo(map);
+      else startLine.setLatLngs(pts);
+    } else if (startLine){ map.removeLayer(startLine); startLine=null; }
+  }
+  function attachDropper(which){
+    const handler=e=>{
+      if (which==='A'){
+        markerA ??= L.marker(e.latlng,{draggable:true}).addTo(map).on('drag',updateStartLine).on('dragend',()=>compute());
+        markerA.setLatLng(e.latlng);
       } else {
-        secureBanner.style.display = 'block';
-        secureBanner.classList.add('good');
-        secureBanner.textContent = 'Secure context ✓ — geolocation is allowed by the browser.';
+        markerB ??= L.marker(e.latlng,{draggable:true}).addTo(map).on('drag',updateStartLine).on('dragend',()=>compute());
+        markerB.setLatLng(e.latlng);
       }
+      updateStartLine(); compute(); map.off('click',handler);
+    };
+    map.on('click',handler);
+  }
+  function setPinFromGPS(which){
+    if (!lastFix){ statusText.textContent='No GPS fix yet — tap Enable GPS and allow location.'; return; }
+    const ll={lat:lastFix.lat,lng:lastFix.lng};
+    if (which==='A'){
+      markerA ??= L.marker(ll,{draggable:true}).addTo(map).on('drag',updateStartLine).on('dragend',()=>compute());
+      markerA.setLatLng(ll);
+    } else {
+      markerB ??= L.marker(ll,{draggable:true}).addTo(map).on('drag',updateStartLine).on('dragend',()=>compute());
+      markerB.setLatLng(ll);
     }
-    showSecureBanner();
+    updateStartLine(); compute();
+  }
 
-    function updateStartLine(){
-      if (markerA && markerB) {
-        const latlngs = [markerA.getLatLng(), markerB.getLatLng()];
-        if (!startLine) startLine = L.polyline(latlngs, { color: '#16a34a', weight: 4 }).addTo(map);
-        else startLine.setLatLngs(latlngs);
-      } else if (startLine) {
-        map.removeLayer(startLine); startLine = null;
-      }
-    }
+  // GPS
+  function estimateSOG(prev, curLLT){
+    const p1=turf.point([prev.lng,prev.lat]), p2=turf.point([curLLT.lng,curLLT.lat]);
+    const dt=(curLLT.time-prev.time)/1000; if (dt<=0) return null;
+    const km=turf.distance(p1,p2,{units:'kilometers'}); return mpsToKn(kmToM(km)/dt);
+  }
+  function onPosition(pos){
+    const { latitude, longitude, speed } = pos.coords;
+    const sogKn = speed!=null ? mpsToKn(speed) : (lastFix?.lat ? estimateSOG(lastFix,{lat:latitude,lng:longitude,time:pos.timestamp}) : null);
+    lastFix = { lat:latitude, lng:longitude, time:pos.timestamp, sogKn };
+    if (track.getLatLngs().length===0) map.setView([latitude,longitude],15);
+    track.addLatLng([latitude,longitude]);
+    statusText.textContent='GPS OK'; curEl.textContent=sogKn?fmt(sogKn):'—';
+    compute();
+  }
+  function onPositionError(err){
+    statusText.textContent = err?.code===1 ? 'Permission denied — allow location and tap Enable GPS again.'
+      : err?.code===2 ? 'Position unavailable — move to open sky.'
+      : err?.code===3 ? 'Timeout — try again.' : `GPS error: ${err?.message||'unknown'}`;
+  }
+  function startWatching(){
+    if (!navigator.geolocation){ statusText.textContent='Geolocation not supported.'; return; }
+    if (watchId!=null){ statusText.textContent='GPS already enabled.'; return; }
+    statusText.textContent='Requesting location…';
+    watchId=navigator.geolocation.watchPosition(onPosition,onPositionError,{enableHighAccuracy:true,maximumAge:1000,timeout:10000});
+  }
+  btnEnable.addEventListener('click', startWatching);
 
-    function attachDropper(which){
-      const handler = (e) => {
-        if (which === 'A') {
-          if (!markerA) markerA = L.marker(e.latlng, { draggable: true }).addTo(map)
-            .on('drag', updateStartLine)
-            .on('dragend', () => computeEverything(lastFix));
-          markerA.setLatLng(e.latlng);
-        } else {
-          if (!markerB) markerB = L.marker(e.latlng, { draggable: true }).addTo(map)
-            .on('drag', updateStartLine)
-            .on('dragend', () => computeEverything(lastFix));
-          markerB.setLatLng(e.latlng);
-        }
-        updateStartLine();
-        computeEverything(lastFix);
-        map.off('click', handler);
-      };
-      map.on('click', handler);
-    }
+  // Target point
+  function getTargetPoint(){
+    if (!(markerA&&markerB)) return null;
+    const a=markerA.getLatLng(), b=markerB.getLatLng();
+    const ab=turf.lineString([[a.lng,a.lat],[b.lng,b.lat]]);
+    const ba=turf.lineString([[b.lng,b.lat],[a.lng,a.lat]]);
+    const totalKm=turf.length(ab,{units:'kilometers'});
+    const distKm=Math.min((Number(offsetMetersInput.value)||0)/1000, totalKm);
+    const which=targetEndSel.value;
+    const pt=(which==='A')?turf.along(ab,distKm,{units:'kilometers'}):turf.along(ba,distKm,{units:'kilometers'});
+    const [lng,lat]=pt.geometry.coordinates; return {lat,lng,which};
+  }
+  function renderTarget(pt){
+    if (!pt){ if (targetMarker){map.removeLayer(targetMarker); targetMarker=null;} return; }
+    targetMarker ??= L.circleMarker([pt.lat,pt.lng],{radius:7,color:'#4cc9f0',fillColor:'#4cc9f0',fillOpacity:.9}).addTo(map);
+    targetMarker.setLatLng([pt.lat,pt.lng]);
+  }
 
-    function setPinFromGPS(which){
-      if (!lastFix) {
-        statusText.textContent = 'No GPS fix yet — tap Enable GPS on your phone and allow location.';
-        return;
-      }
-      const latlng = { lat: lastFix.lat, lng: lastFix.lng };
-      if (which === 'A') {
-        if (!markerA) markerA = L.marker(latlng, { draggable: true }).addTo(map)
-          .on('drag', updateStartLine)
-          .on('dragend', () => computeEverything(lastFix));
-        markerA.setLatLng(latlng);
-      } else {
-        if (!markerB) markerB = L.marker(latlng, { draggable: true }).addTo(map)
-          .on('drag', updateStartLine)
-          .on('dragend', () => computeEverything(lastFix));
-        markerB.setLatLng(latlng);
-      }
-      updateStartLine();
-      computeEverything(lastFix);
-    }
+  // Countdown
+  function getStartEpoch(){ const v=startTimeInput.value; return v? new Date(v).getTime() : null; }
+  function updateCountdown(){
+    const ts=getStartEpoch(); if (!ts){ countdownEl.textContent='—'; raceCountdown.textContent='--:--'; return; }
+    const diff=Math.round((ts-Date.now())/1000), t=Math.abs(diff);
+    const txt=`${diff<0?'-':''}${String(Math.floor(t/60)).padStart(2,'0')}:${String(t%60).padStart(2,'0')}`;
+    countdownEl.textContent=txt; raceCountdown.textContent=txt;
+  }
+  setInterval(updateCountdown,250);
 
-    btnSetA.addEventListener('click', () => attachDropper('A'));
-    btnSetB.addEventListener('click', () => attachDropper('B'));
-    btnAFromGPS.addEventListener('click', () => setPinFromGPS('A'));
-    btnBFromGPS.addEventListener('click', () => setPinFromGPS('B'));
+  // Compute
+  function compute(){
+    const ts=getStartEpoch(); const tRemSec = ts? Math.max((ts-Date.now())/1000,0) : null;
+    if (!(markerA&&markerB&&lastFix)){ distTargetEl.textContent=reqEl.textContent=etaEl.textContent='—'; return; }
 
-    btnClear.addEventListener('click', () => {
-      if (markerA) { map.removeLayer(markerA); markerA = null; }
-      if (markerB) { map.removeLayer(markerB); markerB = null; }
-      if (startLine) { map.removeLayer(startLine); startLine = null; }
-      if (closestPtMarker) { map.removeLayer(closestPtMarker); closestPtMarker = null; }
-      if (targetMarker) { map.removeLayer(targetMarker); targetMarker = null; }
-      distTargetEl.textContent = '—'; reqEl.textContent = '—'; etaEl.textContent = '—';
-      adviceEl.textContent = 'Set line + start time'; adviceEl.className = 'pill warn';
-    });
+    updateStartLine();
+    const tgt=getTargetPoint(); renderTarget(tgt); if (!tgt) return;
 
-    // time / countdown
-    function getStartEpoch(){
-      const v = startTimeInput.value; if (!v) return null; return new Date(v).getTime();
-    }
-    function updateCountdown(){
-      const startTs = getStartEpoch();
-      if (!startTs) { countdownEl.textContent = '—'; return; }
-      const now = Date.now();
-      const diff = Math.round((startTs - now) / 1000);
-      const sign = diff < 0 ? '-' : '';
-      const t = Math.abs(diff);
-      const mm = String(Math.floor(t/60)).padStart(2,'0');
-      const ss = String(t%60).padStart(2,'0');
-      countdownEl.textContent = `${sign}${mm}:${ss}`;
-    }
-    setInterval(updateCountdown, 250);
+    const boat=turf.point([lastFix.lng,lastFix.lat]), tp=turf.point([tgt.lng,tgt.lat]);
+    const distKm=turf.distance(boat,tp,{units:'kilometers'}), distNm=mToNm(kmToM(distKm));
+    distTargetEl.textContent=`${fmt(distNm,3)} nm`; raceDist.textContent=fmt(distNm,3);
 
-    // GPS + SOG
-    let lastFix = null;
-    let watchId = null;
+    if (tRemSec && tRemSec>0){
+      const reqKn= distNm / (tRemSec/3600);
+      reqEl.textContent=`${fmt(reqKn)} kn`; raceReq.textContent=fmt(reqKn,1);
+      const curKn=lastFix.sogKn; curEl.textContent=curKn?`${fmt(curKn)} kn`:'—'; raceSOG.textContent=curKn?fmt(curKn,1):'—';
+      if (curKn && curKn>0){
+        etaEl.textContent=`${fmt((distNm/curKn)*60,1)} min`;
+        const delta=curKn-reqKn; const sign=delta>0?'+':''; const abs=fmt(Math.abs(delta),1);
+        raceDelta.textContent = `${sign}${fmt(delta,1)} kn`;
+        if (Math.abs(delta)<0.2){ adviceEl.className='pill ok'; adviceEl.textContent='Hold speed'; raceDelta.className='delta ok'; }
+        else if (delta<0){ adviceEl.className='pill bad'; adviceEl.textContent=`Sail faster by ${abs} kn`; raceDelta.className='delta bad'; }
+        else { adviceEl.className='pill good'; adviceEl.textContent=`Sail slower by ${abs} kn`; raceDelta.className='delta good'; }
+      } else { etaEl.textContent='—'; adviceEl.className='pill warn'; adviceEl.textContent='Accelerate to required speed'; raceDelta.className='delta ok'; }
+    } else if (tRemSec===0){ adviceEl.className='pill ok'; adviceEl.textContent='START!'; reqEl.textContent='—'; etaEl.textContent='—'; }
+    else { adviceEl.className='pill warn'; adviceEl.textContent='Set start time'; reqEl.textContent='—'; etaEl.textContent='—'; }
+  }
 
-    function computeSOG(prev, cur){
-      if (!prev) return null;
-      const dt = (cur.time - prev.time) / 1000;
-      if (dt <= 0) return prev.sogKn ?? null;
-      const p1 = turf.point([prev.lng, prev.lat]);
-      const p2 = turf.point([cur.lng, cur.lat]);
-      const distKm = turf.distance(p1, p2, { units: 'kilometers' }); // turf returns km
-      const distM = kmToM(distKm);
-      return mpsToKn(distM / dt);
-    }
+  // Wire UI
+  btnDropA.addEventListener('click',()=>attachDropper('A'));
+  btnDropB.addEventListener('click',()=>attachDropper('B'));
+  btnAFrom.addEventListener('click',()=>setPinFromGPS('A'));
+  btnBFrom.addEventListener('click',()=>setPinFromGPS('B'));
+  btnClear.addEventListener('click',()=>{ [markerA,markerB,startLine,targetMarker].forEach(m=>m&&map.removeLayer(m));
+    markerA=markerB=startLine=targetMarker=null; distTargetEl.textContent=reqEl.textContent=etaEl.textContent='—';
+    adviceEl.className='pill warn'; adviceEl.textContent='Set line + start time'; });
+  targetEndSel.addEventListener('change',compute);
+  offsetMetersInput.addEventListener('input',compute);
+  startTimeInput.addEventListener('change',updateCountdown);
 
-    async function ensurePermission(){
-      if (!('permissions' in navigator)) return null; // older browsers
-      try {
-        const status = await navigator.permissions.query({ name: 'geolocation' });
-        return status.state; // 'granted' | 'prompt' | 'denied'
-      } catch { return null; }
-    }
+  // Race mode toggle
+  function openRace(){ race.classList.add('on'); race.setAttribute('aria-hidden','false'); }
+  function closeRace(){ race.classList.remove('on'); race.setAttribute('aria-hidden','true'); }
+  raceToggle.addEventListener('click',()=>{ race.classList.contains('on') ? closeRace() : openRace(); });
+  raceClose.addEventListener('click',closeRace);
+  // Optional: thumb nudges (visual only)
+  raceTapFaster.addEventListener('click',()=>raceDelta.animate([{transform:'scale(1.05)'},{transform:'scale(1)'}],{duration:150}));
+  raceTapSlower.addEventListener('click',()=>raceDelta.animate([{transform:'scale(0.95)'},{transform:'scale(1)'}],{duration:150}));
 
-    function startWatching(){
-      if (!navigator.geolocation) {
-        statusText.textContent = 'Geolocation not supported.';
-        return;
-      }
-      if (watchId != null) {
-        statusText.textContent = 'GPS already enabled.';
-        return;
-      }
-      statusText.textContent = 'Requesting location…';
-      watchId = navigator.geolocation.watchPosition(onPosition, onPositionError, {
-        enableHighAccuracy: true, maximumAge: 1000, timeout: 10000
-      });
-    }
-
-    async function requestGeolocation(){
-      if (!window.isSecureContext) showSecureBanner();
-      const state = await ensurePermission();
-      if (state === 'denied') {
-        statusText.textContent = 'Location permission is denied. In Chrome: ⋮ → Site settings → Location → Allow, then reload and tap Enable GPS again.';
-        return;
-      }
-      startWatching();
-    }
-
-    btnEnable.addEventListener('click', requestGeolocation);
-
-    function onPosition(pos){
-      const { latitude, longitude, speed } = pos.coords;
-      const fix = {
-        lat: latitude,
-        lng: longitude,
-        time: pos.timestamp,
-        sogKn: speed != null ? mpsToKn(speed) : null,
-      };
-      if (fix.sogKn == null) fix.sogKn = computeSOG(lastFix, fix);
-      lastFix = fix;
-      statusText.textContent = `GPS OK`;
-      if (track.getLatLngs().length === 0) map.setView([fix.lat, fix.lng], 15);
-      track.addLatLng([fix.lat, fix.lng]);
-      computeEverything(fix);
-    }
-
-    function onPositionError(err){
-      if (err && err.code === 1) {
-        statusText.textContent = 'User denied geolocation. In Chrome: ⋮ → Site settings → Location → Allow, then reload and tap Enable GPS again.';
-      } else if (err && err.code === 2) {
-        statusText.textContent = 'Position unavailable. Try moving to open sky, enable GPS, or toggle airplane mode.';
-      } else if (err && err.code === 3) {
-        statusText.textContent = 'Timeout getting position. Try again or check GPS settings.';
-      } else {
-        statusText.textContent = `GPS error: ${err?.message || 'unknown'}`;
-      }
-    }
-
-    // Calculate target crossing point: start from chosen end, move "offsetMeters" toward the other end along the line
-    function getTargetPoint(){
-      if (!(markerA && markerB)) return null;
-      const a = markerA.getLatLng();
-      const b = markerB.getLatLng();
-      const lineAB = turf.lineString([[a.lng, a.lat], [b.lng, b.lat]]);
-      const lineBA = turf.lineString([[b.lng, b.lat], [a.lng, a.lat]]);
-      const totalKm = turf.length(lineAB, { units:'kilometers' });
-      let offsetM = Math.max(0, Number(offsetMetersInput.value) || 0);
-      const offsetKm = offsetM / 1000;
-      const distAlongKm = Math.min(offsetKm, totalKm);
-      const which = targetEndSel.value; // 'A' or 'B'
-      const pt = (which === 'A') ? turf.along(lineAB, distAlongKm, { units:'kilometers' })
-                                 : turf.along(lineBA, distAlongKm, { units:'kilometers' });
-      const [lng, lat] = pt.geometry.coordinates;
-      return { lat, lng, which };
-    }
-
-    function renderTargetMarker(pt){
-      if (!pt) { if (targetMarker) { map.removeLayer(targetMarker); targetMarker = null; } return; }
-      if (!targetMarker) {
-        targetMarker = L.circleMarker([pt.lat, pt.lng], { radius: 7, color: '#0ea5e9', fillColor: '#0ea5e9', fillOpacity: 0.9 }).addTo(map);
-      } else targetMarker.setLatLng([pt.lat, pt.lng]);
-      targetMarker.bindTooltip(`Target ${pt.which} (+${offsetMetersInput.value} m)`, {permanent:false});
-    }
-
-    function computeEverything(fix){
-      const startTs = getStartEpoch();
-      const now = Date.now();
-      const tRemSec = startTs ? Math.max((startTs - now)/1000, 0) : null;
-
-      if (markerA && markerB && lastFix) {
-        updateStartLine();
-        const target = getTargetPoint();
-        renderTargetMarker(target);
-
-        if (target) {
-          targetLabelEl.textContent = `Target ${target.which} (+${offsetMetersInput.value} m)`;
-          const boat = turf.point([lastFix.lng, lastFix.lat]);
-          const tgt = turf.point([target.lng, target.lat]);
-          const distKm = turf.distance(boat, tgt, { units:'kilometers' });
-          const distM = kmToM(distKm);
-          const distNm = metersToNm(distM);
-          distTargetEl.textContent = `${fmt(distNm, 3)} nm`;
-
-          if (tRemSec && tRemSec > 0) {
-            const reqKn = distNm / (tRemSec / 3600);
-            reqEl.textContent = `${fmt(reqKn)} kn`;
-
-            const curKn = Number.isFinite(lastFix.sogKn) ? lastFix.sogKn : null;
-            curEl.textContent = curKn ? `${fmt(curKn)} kn` : '—';
-
-            if (curKn && curKn > 0) {
-              const etaMin = (distNm / curKn) * 60;
-              etaEl.textContent = `${fmt(etaMin,1)} min`;
-              const delta = curKn - reqKn;
-              if (Math.abs(delta) < 0.2) {
-                adviceEl.textContent = 'Hold speed'; adviceEl.className = 'pill ok';
-              } else if (delta < 0) {
-                adviceEl.textContent = `Sail faster by ${fmt(-delta)} kn`; adviceEl.className = 'pill bad';
-              } else {
-                adviceEl.textContent = `Sail slower by ${fmt(delta)} kn`; adviceEl.className = 'pill good';
-              }
-            } else {
-              etaEl.textContent = '—';
-              adviceEl.textContent = 'Accelerate to required speed'; adviceEl.className = 'pill warn';
-            }
-          } else if (tRemSec === 0) {
-            reqEl.textContent = '—'; etaEl.textContent = '—';
-            adviceEl.textContent = 'START!'; adviceEl.className = 'pill ok';
-          } else {
-            reqEl.textContent = '—'; etaEl.textContent = '—';
-            adviceEl.textContent = 'Set start time'; adviceEl.className = 'pill warn';
-          }
-        }
-      } else {
-        distTargetEl.textContent = '—'; reqEl.textContent = '—'; etaEl.textContent = '—';
-        if (!(markerA && markerB)) adviceEl.textContent = 'Set line + start time';
-      }
-    }
-
-    // Default start time = now + 5 minutes
-    const nowDate = new Date();
-    nowDate.setMinutes(nowDate.getMinutes() + 5);
-    nowDate.setSeconds(0); nowDate.setMilliseconds(0);
-    const pad = (n) => String(n).padStart(2,'0');
-    startTimeInput.value = `${nowDate.getFullYear()}-${pad(nowDate.getMonth()+1)}-${pad(nowDate.getDate())}T${pad(nowDate.getHours())}:${pad(nowDate.getMinutes())}`;
-
-    // Recompute when user changes target/offset or time
-    targetEndSel.addEventListener('change', () => computeEverything(lastFix));
-    offsetMetersInput.addEventListener('input', () => computeEverything(lastFix));
-    startTimeInput.addEventListener('change', updateCountdown);
-
-    /* ---------------------------
-       Lightweight console tests
-       --------------------------- */
-    (function runTests(){
-      const approx = (a,b,eps=1e-6)=>Math.abs(a-b)<=eps;
-
-      console.log('[TEST] metersToNm');
-      console.assert(approx(metersToNm(1852), 1), '1852 m should be 1 nm');
-      console.assert(approx(metersToNm(0), 0), '0 m should be 0 nm');
-
-      console.log('[TEST] mpsToKn');
-      console.assert(approx(mpsToKn(1), 1.943844), '1 m/s ≈ 1.943844 kn');
-
-      console.log('[TEST] Required speed calc (target point)');
-      // 0.2 nm in 5 minutes -> 2.4 kn
-      const req = 0.2 / (300/3600);
-      console.assert(approx(req, 2.4), '0.2 nm in 5 min should be 2.4 kn');
-
-      console.log('[TEST] Turf distance units');
-      const p0 = turf.point([0,0]);
-      const pE = turf.point([0.001,0]); // ~111 m at equator
-      const km = turf.distance(p0, pE, { units:'kilometers' });
-      console.assert(km > 0 && km < 0.2, 'kilometers should be small and positive');
-      const m = km * 1000;
-      console.assert(m > 80 && m < 140, 'converted meters roughly 111m');
-
-      console.log('[TEST] along + offset clamping');
-      const a = turf.point([0,0]), b = turf.point([0.01,0]);
-      const line = turf.lineString([a.geometry.coordinates,b.geometry.coordinates]);
-      const lenKm = turf.length(line, {units:'kilometers'});
-      const tooFar = lenKm + 1;
-      const pt = turf.along(line, tooFar, {units:'kilometers'});
-      console.assert(pt, 'turf.along returns a point even if distance exceeds length (we clamp separately)');
-
-      console.log('[TESTS] Completed ✔');
-    })();
-  </script>
+  // Prefill start time (now + 5 min)
+  const now=new Date(); now.setMinutes(now.getMinutes()+5); now.setSeconds(0); now.setMilliseconds(0);
+  const pad=n=>String(n).padStart(2,'0');
+  startTimeInput.value=`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+</script>
 </body>
 </html>
