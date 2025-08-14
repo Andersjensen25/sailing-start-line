@@ -3,27 +3,19 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sailing Start Line – Speed Helper (v2)</title>
+  <title>RacePace – Sailing Start Helper</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root{
-      --bg:#f6f7fb;
-      --card:#ffffff;
-      --border:#e6e7eb;
-      --text:#0f172a;
-      --muted:#64748b;
-      --accent:#0ea5e9;
-      --good:#16a34a;
-      --warn:#f59e0b;
-      --bad:#ef4444;
-      --shadow:0 10px 30px rgba(15,23,42,0.05);
+      --bg:#f6f7fb; --card:#ffffff; --border:#e6e7eb; --text:#0f172a; --muted:#64748b;
+      --accent:#0ea5e9; --good:#16a34a; --warn:#f59e0b; --bad:#ef4444; --shadow:0 10px 30px rgba(15,23,42,0.05);
       --radius:18px;
     }
-    html, body { height: 100%; margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; color: var(--text); background: var(--bg); }
+    html, body { height: 100%; margin: 0; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial; color: var(--text); background: var(--bg); }
     #app { display: grid; grid-template-rows: auto 1fr auto; height: 100%; }
-    header { position: sticky; top: 0; z-index: 1000; backdrop-filter: saturate(180%) blur(12px); background: rgba(246,247,251,0.85); border-bottom: 1px solid var(--border); }
+    header { position: sticky; top: 0; z-index: 1000; backdrop-filter: saturate(180%) blur(12px); background: rgba(246,247,251,0.9); border-bottom: 1px solid var(--border); }
     .inner { padding: 12px 14px; display: grid; grid-template-columns: 1fr auto; align-items: center; }
-    h1 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
+    h1 { margin: 0; font-size: 18px; font-weight: 800; letter-spacing: -0.02em; }
     .seg { display: inline-flex; background: #eef2f7; padding: 4px; border-radius: 999px; box-shadow: inset 0 1px 0 rgba(0,0,0,0.03); }
     .seg button { border:0; background: transparent; padding: 8px 14px; border-radius: 999px; font-weight: 600; color: var(--muted); cursor: pointer; }
     .seg button.active { background: var(--card); color: var(--text); box-shadow: var(--shadow); }
@@ -50,6 +42,7 @@
     .good { background:#ecfdf5; color:#065f46; }
     .banner { padding: 10px; border-radius: 12px; background:#fff7ed; color:#9a3412; border:1px solid #fed7aa; }
     .banner.good { background:#ecfdf5; color:#065f46; border-color:#bbf7d0; }
+    /* Race mode */
     #race { display:none; position: fixed; inset: 0; background: var(--bg); padding: 16px; z-index: 2000; overflow: auto; }
     .raceCard { max-width: 820px; margin: 0 auto; background: var(--card); border: 1px solid var(--border); border-radius: 24px; box-shadow: var(--shadow); padding: 18px; }
     .raceGrid { display: grid; gap: 12px; }
@@ -64,16 +57,19 @@
   <div id="app">
     <header>
       <div class="inner">
-        <h1>Start Line</h1>
+        <h1>RacePace</h1>
         <div class="seg" role="tablist" aria-label="Mode">
           <button id="modeSetup" class="active" role="tab" aria-selected="true">Setup</button>
           <button id="modeRace" role="tab" aria-selected="false">Race</button>
         </div>
       </div>
     </header>
+
     <div id="map"></div>
+
     <div class="controls">
       <div id="secureBanner" class="banner" style="display:none"></div>
+
       <div class="group">
         <div class="row" style="gap:10px">
           <button id="dropA" class="btn">Tap map: Set Pin A (target)</button>
@@ -84,6 +80,7 @@
           <button id="clear" class="btn destructive">Clear</button>
         </div>
       </div>
+
       <div class="group">
         <div class="row">
           <label class="inline">
@@ -100,6 +97,7 @@
           </div>
         </div>
       </div>
+
       <div class="group">
         <div class="row">
           <div class="stat">
@@ -129,6 +127,7 @@
         </div>
       </div>
     </div>
+
     <section id="race" aria-hidden="true">
       <div class="raceCard">
         <div class="raceGrid">
@@ -141,6 +140,10 @@
             <div id="raceSpeed" class="raceValue">—</div>
           </div>
           <div class="raceTile">
+            <div class="raceLabel">ETA</div>
+            <div id="raceETA" class="raceValue">—</div>
+          </div>
+          <div class="raceTile">
             <div class="raceLabel">Status</div>
             <div id="raceAdvice" class="raceAdvice">—</div>
           </div>
@@ -148,11 +151,15 @@
         </div>
       </div>
     </section>
-    <footer>v2 • iOS‑style UI • GPS pin set • Race Mode</footer>
+
+    <footer>v3 • Smoothed GPS speed • ETA in Race Mode</footer>
   </div>
+
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/@turf/turf@7.2.0/turf.min.js"></script>
+
   <script type="module">
+    // Map init
     const map = L.map('map');
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'
@@ -162,14 +169,19 @@
     window.addEventListener('orientationchange', () => setTimeout(invalidate, 250));
     window.addEventListener('resize', () => setTimeout(invalidate, 250));
     setTimeout(invalidate, 100);
+
+    // Layers & state
     let markerA = null, markerB = null, startLine = null, targetMarker = null;
     const track = L.polyline([], { color: '#2563eb', weight: 3, opacity: 0.7 }).addTo(map);
+
+    // UI refs
     const btnSetA   = document.getElementById('dropA');
     const btnSetB   = document.getElementById('dropB');
     const btnClear  = document.getElementById('clear');
     const btnEnable = document.getElementById('enableGPS');
     const btnAFromGPS = document.getElementById('setAFromGPS');
     const btnBFromGPS = document.getElementById('setBFromGPS');
+
     const startTimeInput = document.getElementById('startTime');
     const countdownEl = document.getElementById('countdown');
     const statusText = document.getElementById('statusText');
@@ -181,22 +193,28 @@
     const adviceEl = document.getElementById('advice');
     const offsetMetersInput = document.getElementById('offsetMeters');
     const secureBanner = document.getElementById('secureBanner');
+
+    // Race UI refs
     const modeSetup = document.getElementById('modeSetup');
     const modeRace = document.getElementById('modeRace');
     const race = document.getElementById('race');
     const raceCountdown = document.getElementById('raceCountdown');
     const raceSpeed = document.getElementById('raceSpeed');
+    const raceETA = document.getElementById('raceETA');
     const raceAdvice = document.getElementById('raceAdvice');
     const exitRace = document.getElementById('exitRace');
+
+    // Utils
     function fmt(num, digits=2){ return Number.isFinite(num) ? num.toFixed(digits) : '—'; }
     const metersToNm = (m) => m / 1852;
     const mpsToKn = (mps) => mps * 1.943844;
     const kmToM = (km) => km * 1000;
+
     function showSecureBanner(){
       if (!window.isSecureContext) {
         secureBanner.style.display = 'block';
         secureBanner.classList.remove('good');
-        secureBanner.innerHTML = '<strong>Geolocation may be blocked</strong>. This page is not in a secure context. On Android Chrome, location only works over HTTPS or localhost. <br/>Suggestion: host this file on a HTTPS site (GitHub Pages/Netlify) or use a local server. After moving, tap <em>Enable GPS</em> again.';
+        secureBanner.innerHTML = '<strong>Geolocation may be blocked</strong>. On Android Chrome, location only works over HTTPS or localhost. Host on HTTPS (GitHub Pages/Netlify) and tap <em>Enable GPS</em> again.';
       } else {
         secureBanner.style.display = 'block';
         secureBanner.classList.add('good');
@@ -204,6 +222,7 @@
       }
     }
     showSecureBanner();
+
     function updateStartLine(){
       if (markerA && markerB) {
         const latlngs = [markerA.getLatLng(), markerB.getLatLng()];
@@ -213,6 +232,7 @@
         map.removeLayer(startLine); startLine = null;
       }
     }
+
     function setMarker(which, latlng){
       if (which === 'A') {
         if (!markerA) markerA = L.marker(latlng, { draggable: true }).addTo(map)
@@ -227,12 +247,14 @@
       }
       updateStartLine(); computeEverything(lastFix);
     }
+
     function attachDropper(which){
       const handler = (e) => { setMarker(which, e.latlng); map.off('click', handler); };
       map.on('click', handler);
     }
     btnSetA.addEventListener('click', () => attachDropper('A'));
     btnSetB.addEventListener('click', () => attachDropper('B'));
+
     btnClear.addEventListener('click', () => {
       if (markerA) { map.removeLayer(markerA); markerA = null; }
       if (markerB) { map.removeLayer(markerB); markerB = null; }
@@ -241,6 +263,8 @@
       distTargetEl.textContent = '—'; reqEl.textContent = '—'; etaEl.textContent = '—';
       adviceEl.textContent = 'Set line + start time'; adviceEl.className = 'pill warn';
     });
+
+    // Time / countdown
     function getStartEpoch(){ const v = startTimeInput.value; if (!v) return null; return new Date(v).getTime(); }
     function updateCountdown(){
       const startTs = getStartEpoch();
@@ -255,56 +279,125 @@
       countdownEl.textContent = txt; raceCountdown.textContent = txt;
     }
     setInterval(updateCountdown, 250);
-    let lastFix = null; let watchId = null;
-    function computeSOG(prev, cur){
-      if (!prev) return null; const dt = (cur.time - prev.time) / 1000; if (dt <= 0) return prev.sogKn ?? null;
-      const p1 = turf.point([prev.lng, prev.lat]); const p2 = turf.point([cur.lng, cur.lat]);
-      const distKm = turf.distance(p1, p2, { units: 'kilometers' }); const distM = kmToM(distKm);
-      return mpsToKn(distM / dt);
+
+    // GPS + SOG (smoothed)
+    let lastFix = null;         // latest raw fix
+    let watchId = null;
+    const fixBuffer = [];       // recent fixes
+    const MAX_FIX_AGE_MS = 8000; // keep ~8s of fixes
+    const SPEED_WINDOW_SEC = 4;  // compute speed over last 4s distance
+    const EMA_ALPHA = 0.35;      // smoothing factor for speed
+    let sogEma = null;          // exponential moving average of speed (kn)
+
+    function pushFix(fix){
+      fixBuffer.push(fix);
+      const cutoff = Date.now() - MAX_FIX_AGE_MS;
+      while (fixBuffer.length && fixBuffer[0].time < cutoff) fixBuffer.shift();
     }
-    async function ensurePermission(){ if (!('permissions' in navigator)) return null; try { const st = await navigator.permissions.query({ name:'geolocation' }); return st.state; } catch { return null; } }
+
+    function computeWindowSpeedKn(){
+      // Use distance over the last SPEED_WINDOW_SEC seconds
+      if (fixBuffer.length < 2) return null;
+      const latest = fixBuffer[fixBuffer.length - 1];
+      // Find an older point >= window seconds back
+      let i = fixBuffer.length - 2;
+      while (i >= 0 && (latest.time - fixBuffer[i].time) / 1000 < SPEED_WINDOW_SEC) i--;
+      i = Math.max(i, 0);
+      const older = fixBuffer[i];
+
+      const p1 = turf.point([older.lng, older.lat]);
+      const p2 = turf.point([latest.lng, latest.lat]);
+      const distKm = turf.distance(p1, p2, { units: 'kilometers' });
+      const distNm = metersToNm(kmToM(distKm));
+      const dtHr = (latest.time - older.time) / 3600000;
+      if (dtHr <= 0) return null;
+      const spd = distNm / dtHr;
+
+      // Guard: ignore tiny jitter (e.g., < 0.2 kn) when distance is < 5 m
+      const distM = kmToM(distKm);
+      if (distM < 5 && spd < 0.2) return 0;
+      return spd;
+    }
+
+    function smoothSpeedKn(rawKn){
+      if (!Number.isFinite(rawKn)) return sogEma;
+      if (sogEma == null) { sogEma = rawKn; return sogEma; }
+      sogEma = EMA_ALPHA * rawKn + (1 - EMA_ALPHA) * sogEma;
+      return sogEma;
+    }
+
     function startWatching(){
       if (!navigator.geolocation) { statusText.textContent = 'Geolocation not supported.'; return; }
       if (watchId != null) { statusText.textContent = 'GPS already enabled.'; return; }
       statusText.textContent = 'Requesting location…';
-      watchId = navigator.geolocation.watchPosition(onPosition, onPositionError, { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 });
+      watchId = navigator.geolocation.watchPosition(onPosition, onPositionError, {
+        enableHighAccuracy: true, maximumAge: 1000, timeout: 15000
+      });
     }
+    async function ensurePermission(){ if (!('permissions' in navigator)) return null; try { const st = await navigator.permissions.query({ name:'geolocation' }); return st.state; } catch { return null; } }
     async function requestGeolocation(){ if (!window.isSecureContext) showSecureBanner(); const st = await ensurePermission(); if (st === 'denied') { statusText.textContent = 'Location denied. Chrome: ⋮ → Site settings → Location → Allow, then reload and tap Enable GPS again.'; return; } startWatching(); }
     btnEnable.addEventListener('click', requestGeolocation);
+
     function onPosition(pos){
-      const { latitude, longitude, speed } = pos.coords; const fix = { lat: latitude, lng: longitude, time: pos.timestamp, sogKn: speed != null ? mpsToKn(speed) : null };
-      if (fix.sogKn == null) fix.sogKn = computeSOG(lastFix, fix); lastFix = fix; statusText.textContent = 'GPS OK';
+      const { latitude, longitude, speed, accuracy } = pos.coords;
+      const fix = { lat: latitude, lng: longitude, time: pos.timestamp, acc: accuracy ?? null };
+      lastFix = fix; statusText.textContent = 'GPS OK';
+
+      // track & recenter first time
       if (track.getLatLngs().length === 0) { map.setView([fix.lat, fix.lng], 15); setTimeout(() => map.invalidateSize(), 50); }
       track.addLatLng([fix.lat, fix.lng]);
-      curEl.textContent = Number.isFinite(fix.sogKn) ? `${fmt(fix.sogKn)} kn` : '—';
+
+      // Prefer device speed if present & reasonable, else derive from window
+      let rawKn = null;
+      if (typeof speed === 'number' && Number.isFinite(speed) && speed >= 0) {
+        rawKn = mpsToKn(speed);
+      }
+      pushFix(fix);
+      const windowKn = computeWindowSpeedKn();
+      if (windowKn != null) {
+        // Blend: 60% window distance speed, 40% device speed when both exist
+        rawKn = (rawKn != null) ? (0.4 * rawKn + 0.6 * windowKn) : windowKn;
+      }
+      const smoothedKn = smoothSpeedKn(rawKn);
+      curEl.textContent = Number.isFinite(smoothedKn) ? `${fmt(smoothedKn)} kn` : '—';
       raceSpeed.textContent = curEl.textContent;
-      computeEverything(fix);
+
+      computeEverything({ ...fix, sogKn: smoothedKn });
     }
+
     function onPositionError(err){
       if (err && err.code === 1) statusText.textContent = 'User denied geolocation…';
       else if (err && err.code === 2) statusText.textContent = 'Position unavailable…';
       else if (err && err.code === 3) statusText.textContent = 'Position timeout…';
       else statusText.textContent = `GPS error: ${err?.message || 'unknown'}`;
     }
+
     function setFromGPS(which){
       if (!lastFix) { statusText.textContent = 'No GPS fix yet – tap Enable GPS near open sky.'; return; }
       setMarker(which, L.latLng(lastFix.lat, lastFix.lng));
     }
     btnAFromGPS.addEventListener('click', () => setFromGPS('A'));
     btnBFromGPS.addEventListener('click', () => setFromGPS('B'));
+
     function getTargetPoint(){
-      if (!(markerA && markerB)) return null; const a = markerA.getLatLng(); const b = markerB.getLatLng();
+      if (!(markerA && markerB)) return null;
+      const a = markerA.getLatLng(); const b = markerB.getLatLng();
       const lineAB = turf.lineString([[a.lng, a.lat], [b.lng, b.lat]]);
-      const totalKm = turf.length(lineAB, { units:'kilometers' }); let offsetM = Math.max(0, Number(offsetMetersInput.value) || 0);
-      const offsetKm = offsetM / 1000; const distAlongKm = Math.min(offsetKm, totalKm);
-      const pt = turf.along(lineAB, distAlongKm, { units:'kilometers' }); const [lng, lat] = pt.geometry.coordinates; return { lat, lng };
+      const totalKm = turf.length(lineAB, { units:'kilometers' });
+      let offsetM = Math.max(0, Number(offsetMetersInput.value) || 0);
+      const offsetKm = offsetM / 1000;
+      const distAlongKm = Math.min(offsetKm, totalKm);
+      const pt = turf.along(lineAB, distAlongKm, { units:'kilometers' });
+      const [lng, lat] = pt.geometry.coordinates; return { lat, lng };
     }
+
     function renderTargetMarker(pt){
       if (!pt) { if (targetMarker) { map.removeLayer(targetMarker); targetMarker = null; } return; }
       if (!targetMarker) targetMarker = L.circleMarker([pt.lat, pt.lng], { radius: 7, color: '#0ea5e9', fillColor: '#0ea5e9', fillOpacity: 0.9 }).addTo(map);
       else targetMarker.setLatLng([pt.lat, pt.lng]);
       targetMarker.bindTooltip(`Target A (+${offsetMetersInput.value} m)`, {permanent:false});
     }
+
     function computeEverything(fix){
       const startTs = getStartEpoch(); const now = Date.now(); const tRemSec = startTs ? Math.max((startTs - now)/1000, 0) : null;
       if (markerA && markerB) {
@@ -314,29 +407,61 @@
           const boat = turf.point([fix.lng, fix.lat]); const tgt = turf.point([target.lng, target.lat]);
           const distKm = turf.distance(boat, tgt, { units:'kilometers' }); const distM = kmToM(distKm); const distNm = metersToNm(distM);
           distTargetEl.textContent = `${fmt(distNm, 3)} nm`;
+
+          // Required speed based on time remaining
           if (tRemSec && tRemSec > 0) {
             const reqKn = distNm / (tRemSec / 3600); reqEl.textContent = `${fmt(reqKn)} kn`;
-            const curKn = Number.isFinite(fix.sogKn) ? fix.sogKn : null; curEl.textContent = curKn ? `${fmt(curKn)} kn` : '—'; raceSpeed.textContent = curEl.textContent;
+
+            const curKn = Number.isFinite(fix.sogKn) ? fix.sogKn : null;
+            curEl.textContent = curKn ? `${fmt(curKn)} kn` : '—'; raceSpeed.textContent = curEl.textContent;
+
+            // ETA at current
             if (curKn && curKn > 0) {
               const etaMin = (distNm / curKn) * 60; etaEl.textContent = `${fmt(etaMin,1)} min`;
+              raceETA.textContent = etaEl.textContent;
+
               const delta = curKn - reqKn; let adviceText; let cls;
-              if (Math.abs(delta) < 0.2) { adviceText = 'Hold speed'; cls = 'ok'; }
+              if (Math.abs(delta) < 0.15) { adviceText = 'Hold speed'; cls = 'ok'; }
               else if (delta < 0) { adviceText = `Faster by ${fmt(-delta)} kn`; cls = 'bad'; }
               else { adviceText = `Slower by ${fmt(delta)} kn`; cls = 'good'; }
               adviceEl.textContent = adviceText; adviceEl.className = `pill ${cls}`; raceAdvice.textContent = adviceText;
-            } else { etaEl.textContent = '—'; adviceEl.textContent = 'Accelerate to required speed'; adviceEl.className = 'pill warn'; raceAdvice.textContent = 'Accelerate'; }
-          } else if (tRemSec === 0) { reqEl.textContent = '—'; etaEl.textContent = '—'; adviceEl.textContent = 'START!'; adviceEl.className = 'pill ok'; raceAdvice.textContent = 'START!'; }
-          else { reqEl.textContent = '—'; etaEl.textContent = '—'; adviceEl.textContent = 'Set start time'; adviceEl.className = 'pill warn'; raceAdvice.textContent = 'Set start time'; }
+            } else {
+              etaEl.textContent = '—'; raceETA.textContent = '—';
+              adviceEl.textContent = 'Accelerate to required speed'; adviceEl.className = 'pill warn'; raceAdvice.textContent = 'Accelerate';
+            }
+          } else if (tRemSec === 0) {
+            reqEl.textContent = '—'; etaEl.textContent = '—'; raceETA.textContent = '—';
+            adviceEl.textContent = 'START!'; adviceEl.className = 'pill ok'; raceAdvice.textContent = 'START!';
+          } else {
+            reqEl.textContent = '—'; etaEl.textContent = '—'; raceETA.textContent = '—';
+            adviceEl.textContent = 'Set start time'; adviceEl.className = 'pill warn'; raceAdvice.textContent = 'Set start time';
+          }
         }
-      } else { distTargetEl.textContent = '—'; reqEl.textContent = '—'; etaEl.textContent = '—'; adviceEl.textContent = 'Set line + start time'; adviceEl.className = 'pill warn'; raceAdvice.textContent = 'Set line'; }
+      } else {
+        distTargetEl.textContent = '—'; reqEl.textContent = '—'; etaEl.textContent = '—'; raceETA.textContent = '—';
+        adviceEl.textContent = 'Set line + start time'; adviceEl.className = 'pill warn'; raceAdvice.textContent = 'Set line';
+      }
     }
+
+    // Race mode
     function enterRace(){ modeSetup.classList.remove('active'); modeRace.classList.add('active'); race.style.display = 'block'; race.setAttribute('aria-hidden','false'); }
     function exitRaceMode(){ modeRace.classList.remove('active'); modeSetup.classList.add('active'); race.style.display = 'none'; race.setAttribute('aria-hidden','true'); }
     modeRace.addEventListener('click', enterRace); exitRace.addEventListener('click', exitRaceMode); modeSetup.addEventListener('click', exitRaceMode);
+
+    // Defaults
     const nowDate = new Date(); nowDate.setMinutes(nowDate.getMinutes() + 5); nowDate.setSeconds(0); nowDate.setMilliseconds(0);
     const pad = (n) => String(n).padStart(2,'0'); startTimeInput.value = `${nowDate.getFullYear()}-${pad(nowDate.getMonth()+1)}-${pad(nowDate.getDate())}T${pad(nowDate.getHours())}:${pad(nowDate.getMinutes())}`;
+
+    // Recompute on changes
     offsetMetersInput.addEventListener('input', () => computeEverything(lastFix)); startTimeInput.addEventListener('change', updateCountdown);
-    (function runTests(){ const approx = (a,b,eps=1e-6)=>Math.abs(a-b)<=eps; console.log('[TEST] metersToNm'); console.assert(approx(metersToNm(1852),1),'1852 m = 1 nm'); console.log('[TEST] mpsToKn'); console.assert(approx(mpsToKn(1),1.943844),'1 m/s ≈ 1.943844 kn'); console.log('[TEST] Required speed'); const req = 0.2/(300/3600); console.assert(approx(req,2.4),'0.2 nm in 5 min = 2.4 kn'); })();
+
+    /* --------------------------- Tests --------------------------- */
+    (function runTests(){
+      const approx = (a,b,eps=1e-6)=>Math.abs(a-b)<=eps;
+      console.log('[TEST] metersToNm'); console.assert(approx(metersToNm(1852),1),'1852 m = 1 nm');
+      console.log('[TEST] mpsToKn'); console.assert(approx(mpsToKn(1),1.943844),'1 m/s ≈ 1.943844 kn');
+      console.log('[TEST] Required speed'); const req = 0.2/(300/3600); console.assert(approx(req,2.4),'0.2 nm in 5 min = 2.4 kn');
+    })();
   </script>
 </body>
 </html>
